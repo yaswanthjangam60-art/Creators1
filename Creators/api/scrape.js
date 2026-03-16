@@ -8,10 +8,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "user_id is required" })
   }
 
-  const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
-  )
+ const supabase = createClient(
+   process.env.SUPABASE_URL,
+   process.env.SUPABASE_SERVICE_ROLE_KEY  
+ )
 
   // Step 1: Get profile (instagram handle + last_scraped_at)
   const { data: profile, error: profileError } = await supabase
