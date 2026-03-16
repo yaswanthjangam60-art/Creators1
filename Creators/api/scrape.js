@@ -10,11 +10,9 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "user_id and username are required" })
   }
 
-  const SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoZHRsYnBtc3R2bnBjaWtyY3dvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzU3MzIxMCwiZXhwIjoyMDg5MTQ5MjEwfQ.W4X_Bw9NWHJFCC_zSEE4O-8Ooz-hE15nPndUOAJ_OfE"
-
   const supabase = createClient(
     process.env.SUPABASE_URL,
-    SUPABASE_SERVICE_KEY
+    process.env.SUPABASE_SERVICE_KEY
   )
 
   // Check last_scraped_at for 24hr logic
