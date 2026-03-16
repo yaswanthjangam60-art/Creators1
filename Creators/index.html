@@ -142,7 +142,7 @@ const email = prompt("Enter your email to reset password")
 if(!email) return
 
 const { error } = await client.auth.resetPasswordForEmail(email,{
-redirectTo:"http://127.0.0.1:5500/reset.html"
+redirectTo:"https://creators1-gonh.vercel.app/reset.html"
 })
 
 if(error){
