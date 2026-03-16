@@ -363,11 +363,13 @@ async function init(){
 
   if(needsScrape){
     showLoading()
-    const res = await fetch(`/api/scrape?user_id=${user.id}&username=${profile.instagram}`)
-    if(!res.ok){
-      showError('Scrape failed. Please try again.')
-      return
-    }
+ const res = await fetch(`/api/scrape?user_id=${user.id}&username=${profile.instagram}`)
+ const resData = await res.json()
+ console.log('Scrape response:', resData)
+ if(!res.ok){
+   showError(`Scrape failed: ${resData.error || 'Unknown error'}`)
+   return
+ }
   }
 
   // Load latest snapshot
