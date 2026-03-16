@@ -2,30 +2,26 @@
 <html>
 
 <head>
-
-<title>Profile Setup</title>
+<title>Complete Profile</title>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="supabase.js"></script>
 
 <style>
 
 body{
 font-family:Arial;
-background:#f5f5f5;
+background:#f4f4f4;
 display:flex;
 justify-content:center;
 align-items:center;
 height:100vh;
-margin:0;
 }
 
 .card{
 background:white;
 padding:40px;
-width:360px;
+width:400px;
 border-radius:10px;
-text-align:center;
 box-shadow:0 0 10px rgba(0,0,0,0.1);
 }
 
@@ -33,16 +29,19 @@ input,select{
 width:100%;
 padding:10px;
 margin-top:10px;
+border:1px solid #ddd;
+border-radius:5px;
 }
 
 button{
 width:100%;
-padding:10px;
+padding:12px;
 margin-top:15px;
 background:black;
 color:white;
 border:none;
 cursor:pointer;
+border-radius:5px;
 }
 
 </style>
@@ -55,27 +54,25 @@ cursor:pointer;
 
 <h2>Complete Your Profile</h2>
 
-<input id="name" placeholder="Full Name">
+<input id="name" placeholder="Your name">
 
-<input id="instagram" placeholder="Instagram Profile URL">
+<input id="instagram" placeholder="Instagram username">
 
 <select id="category">
-<option value="">Select Content Category</option>
-<option>Education</option>
-<option>Finance</option>
-<option>Technology</option>
-<option>Business</option>
-<option>Career & Productivity</option>
-<option>Marketing</option>
-<option>Startup</option>
-<option>Health & Fitness</option>
-<option>Psychology</option>
-<option>Self Improvement</option>
-<option>Entertainment</option>
-<option>Travel</option>
-<option>Food</option>
+
+<option disabled selected>Select category</option>
+
+<option>Beauty</option>
 <option>Fashion</option>
-<option>Gaming</option>
+<option>Fitness</option>
+<option>Food</option>
+<option>Travel</option>
+<option>Education</option>
+<option>Technology</option>
+<option>Finance</option>
+<option>Lifestyle</option>
+<option>Entertainment</option>
+
 </select>
 
 <button onclick="saveProfile()">Save Profile</button>
@@ -84,43 +81,75 @@ cursor:pointer;
 
 <script>
 
-checkUser()
+const supabase = window.supabase.createClient(
+"https://vhdtlbpmstvnpcikrcwo.supabase.co",
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoZHRsYnBtc3R2bnBjaWtyY3dvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1NzMyMTAsImV4cCI6MjA4OTE0OTIxMH0.1SwUzf7UAyUslpxIk6x7rXLfa4-naElyNSWtI2Un570"
+)
 
-async function checkUser(){
+async function loadProfile(){
 
-const { data } = await client.auth.getSession()
+const { data } = await supabase.auth.getSession()
 
 if(!data.session){
 window.location="index.html"
+return
+}
+
+const user = data.session.user
+
+const { data:profile } = await supabase
+.from("profiles")
+.select("*")
+.eq("id", user.id)
+.single()
+
+if(profile){
+
+document.getElementById("name").value = profile.name || ""
+document.getElementById("instagram").value = profile.instagram || ""
+document.getElementById("category").value = profile.category || ""
+
 }
 
 }
 
 async function saveProfile(){
 
-const { data } = await client.auth.getSession()
-const user=data.session.user
+const { data } = await supabase.auth.getSession()
 
-const name=document.getElementById("name").value
-const instagram=document.getElementById("instagram").value
-const category=document.getElementById("category").value
+if(!data.session){
+alert("Login required")
+return
+}
 
-const { error } = await client
+const user = data.session.user
+
+const name = document.getElementById("name").value
+const instagram = document.getElementById("instagram").value
+const category = document.getElementById("category").value
+
+const { error } = await supabase
 .from("profiles")
-.insert({
-id:user.id,
-name:name,
-instagram:instagram,
-category:category
+.upsert({
+id: user.id,
+name: name,
+email: user.email,
+instagram: instagram,
+category: category
 })
 
 if(error){
 alert(error.message)
-}else{
-window.location="dashboard.html"
+return
 }
 
+alert("Profile saved")
+
+window.location = "dashboard.html"
+
 }
+
+loadProfile()
 
 </script>
 
