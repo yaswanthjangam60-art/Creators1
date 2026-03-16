@@ -2,41 +2,28 @@ import { createClient } from "@supabase/supabase-js"
 
 export default async function handler(req, res) {
 
-  const { user_id } = req.query
+  const { user_id, username } = req.query
 
-  if (!user_id) {
-    return res.status(400).json({ error: "user_id is required" })
+  if (!user_id || !username) {
+    return res.status(400).json({ error: "user_id and username are required" })
   }
 
- const supabase = createClient(
-   process.env.SUPABASE_URL,
-   process.env.SUPABASE_SERVICE_ROLE_KEY  
- )
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
 
-  // Step 1: Get profile (instagram handle + last_scraped_at)
-  const { data: profile, error: profileError } = await supabase
+  // Check last_scraped_at for 24hr logic
+  const { data: profile } = await supabase
     .from("profiles")
-    .select("instagram, last_scraped_at")
+    .select("last_scraped_at")
     .eq("id", user_id)
     .single()
 
-  if (profileError || !profile) {
-    return res.status(404).json({ error: "Profile not found" })
-  }
-
-  if (!profile.instagram) {
-    return res.status(400).json({ error: "No Instagram username on profile" })
-  }
-
-  const username = profile.instagram
-  const lastScraped = profile.last_scraped_at ? new Date(profile.last_scraped_at) : null
+  const lastScraped = profile?.last_scraped_at ? new Date(profile.last_scraped_at) : null
   const now = new Date()
   const hoursSinceLastScrape = lastScraped ? (now - lastScraped) / (1000 * 60 * 60) : null
 
-  // Step 2: Check if scrape is needed
-  // null = never scraped → scrape
-  // < 24hrs → skip, return existing data
-  // >= 24hrs → scrape again
   if (lastScraped && hoursSinceLastScrape < 24) {
     return res.json({
       success: true,
@@ -46,7 +33,7 @@ export default async function handler(req, res) {
     })
   }
 
-  // Step 3: Call Apify
+  // Call Apify
   try {
 
     const apifyRes = await fetch(
@@ -74,37 +61,37 @@ export default async function handler(req, res) {
 
     const scrapedAt = now.toISOString()
 
-    // Step 4: Insert into profile_snapshots
+    // Insert into profile_snapshots
     const { error: snapshotError } = await supabase
       .from("profile_snapshots")
       .insert({
-        user_id:               user_id,
-        instagram_username:    igProfile.username,
-        instagram_user_id:     igProfile.id,
-        full_name:             igProfile.fullName          || null,
-        biography:             igProfile.biography         || null,
-        external_url:          igProfile.externalUrl       || null,
-        external_urls:         igProfile.externalUrls      || null,
-        followers_count:       igProfile.followersCount    || 0,
-        following_count:       igProfile.followsCount      || 0,
-        posts_count:           igProfile.postsCount        || 0,
-        highlight_reel_count:  igProfile.highlightReelCount || 0,
-        igtv_video_count:      igProfile.igtvVideoCount    || 0,
-        is_business_account:   igProfile.isBusinessAccount ?? false,
-        business_category_name: igProfile.businessCategoryName || null,
-        is_private:            igProfile.private           ?? false,
-        is_verified:           igProfile.verified          ?? false,
-        profile_pic_url:       igProfile.profilePicUrl     || null,
-        profile_pic_url_hd:    igProfile.profilePicUrlHD   || null,
-        scraped_at:            scrapedAt
+        user_id:                user_id,
+        instagram_username:     igProfile.username,
+        instagram_user_id:      igProfile.id,
+        full_name:              igProfile.fullName              || null,
+        biography:              igProfile.biography             || null,
+        external_url:           igProfile.externalUrl           || null,
+        external_urls:          igProfile.externalUrls          || null,
+        followers_count:        igProfile.followersCount        || 0,
+        following_count:        igProfile.followsCount          || 0,
+        posts_count:            igProfile.postsCount            || 0,
+        highlight_reel_count:   igProfile.highlightReelCount    || 0,
+        igtv_video_count:       igProfile.igtvVideoCount        || 0,
+        is_business_account:    igProfile.isBusinessAccount     ?? false,
+        business_category_name: igProfile.businessCategoryName  || null,
+        is_private:             igProfile.private               ?? false,
+        is_verified:            igProfile.verified              ?? false,
+        profile_pic_url:        igProfile.profilePicUrl         || null,
+        profile_pic_url_hd:     igProfile.profilePicUrlHD       || null,
+        scraped_at:             scrapedAt
       })
 
     if (snapshotError) {
-      console.error("profile_snapshots insert error:", snapshotError)
+      console.error("profile_snapshots error:", snapshotError)
       return res.status(500).json({ error: "Failed to save profile snapshot", detail: snapshotError.message })
     }
 
-    // Step 5: Insert posts into posts_data (skip duplicates via post_id UNIQUE)
+    // Insert posts into posts_data
     let insertedPosts = 0
     const posts = igProfile.latestPosts || []
 
@@ -137,11 +124,10 @@ export default async function handler(req, res) {
           scraped_at:         scrapedAt
         })
 
-      // Silently skip duplicate posts (post_id is UNIQUE)
       if (!postError) insertedPosts++
     }
 
-    // Step 6: Upsert audit_log
+    // Upsert audit_log
     await supabase
       .from("audit_log")
       .upsert({
@@ -151,7 +137,7 @@ export default async function handler(req, res) {
         last_posts_count:   igProfile.postsCount || 0
       }, { onConflict: "user_id" })
 
-    // Step 7: Update last_scraped_at in profiles
+    // Update last_scraped_at in profiles
     await supabase
       .from("profiles")
       .update({ last_scraped_at: scrapedAt })
