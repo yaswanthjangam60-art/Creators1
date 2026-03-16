@@ -9,7 +9,7 @@ return res.status(400).json({ error: "username required" })
 const APIFY_TOKEN = "YOUR_APIFY_TOKEN"
 
 const SUPABASE_URL = "https://vhdtlbpmstvnpcikrcwo.supabase.co"
-const SUPABASE_KEY = "YOUR_SERVICE_ROLE_KEY"
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoZHRsYnBtc3R2bnBjaWtyY3dvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzU3MzIxMCwiZXhwIjoyMDg5MTQ5MjEwfQ.W4X_Bw9NWHJFCC_zSEE4O-8Ooz-hE15nPndUOAJ_OfE"
 
 try {
 
