@@ -94,7 +94,8 @@ const client = window.supabase.createClient(
 {
 auth: {
 persistSession: true,
-autoRefreshToken: true
+autoRefreshToken: true,
+storage: window.localStorage
 }
 }
 )
