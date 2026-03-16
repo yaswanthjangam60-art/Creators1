@@ -136,7 +136,7 @@ name: name,
 email: user.email,
 instagram: instagram,
 category: category
-})
+}, {onConflict: "id" })
 
 if(error){
 alert(error.message)
