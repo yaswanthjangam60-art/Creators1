@@ -10,9 +10,11 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "user_id and username are required" })
   }
 
+  const SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoZHRsYnBtc3R2bnBjaWtyY3dvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzU3MzIxMCwiZXhwIjoyMDg5MTQ5MjEwfQ.W4X_Bw9NWHJFCC_zSEE4O-8Ooz-hE15nPndUOAJ_OfE"
+
   const supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
+    SUPABASE_SERVICE_KEY
   )
 
   // Check last_scraped_at for 24hr logic
@@ -37,7 +39,7 @@ export default async function handler(req, res) {
 
   try {
 
-    // Step 1: Start Apify run (async)
+    // Start Apify run async
     const runRes = await fetch(
       `https://api.apify.com/v2/acts/apify~instagram-profile-scraper/runs?token=${process.env.APIFY_TOKEN}`,
       {
@@ -62,7 +64,7 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: "No run ID returned from Apify", detail: runData })
     }
 
-    // Step 2: Poll for results every 5 seconds, up to 10 times (50 seconds)
+    // Poll every 5 seconds up to 10 times (50 seconds)
     let igProfile = null
 
     for (let i = 0; i < 10; i++) {
@@ -88,7 +90,7 @@ export default async function handler(req, res) {
 
     const scrapedAt = now.toISOString()
 
-    // Step 3: Insert into profile_snapshots
+    // Insert into profile_snapshots
     const { error: snapshotError } = await supabase
       .from("profile_snapshots")
       .insert({
@@ -118,7 +120,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Failed to save profile snapshot", detail: snapshotError.message })
     }
 
-    // Step 4: Insert posts into posts_data
+    // Insert posts into posts_data
     let insertedPosts = 0
     const posts = igProfile.latestPosts || []
 
@@ -154,7 +156,7 @@ export default async function handler(req, res) {
       if (!postError) insertedPosts++
     }
 
-    // Step 5: Upsert audit_log
+    // Upsert audit_log
     await supabase
       .from("audit_log")
       .upsert({
@@ -164,7 +166,7 @@ export default async function handler(req, res) {
         last_posts_count:   igProfile.postsCount || 0
       }, { onConflict: "user_id" })
 
-    // Step 6: Update last_scraped_at in profiles
+    // Update last_scraped_at in profiles
     await supabase
       .from("profiles")
       .update({ last_scraped_at: scrapedAt })
