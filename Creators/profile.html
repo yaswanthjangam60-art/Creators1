@@ -502,7 +502,7 @@ async function saveProfile(){
    showMsg(error.message, 'error')
  } else {
    showMsg('✓ Profile saved! Setting up your dashboard...', 'success')
-   await fetch(`/api/scrape?user_id=${user.id}`)
+   await fetch(`/api/scrape?user_id=${user.id}&username=${instagram}`)
    window.location = 'dashboard.html'
  }
 }
