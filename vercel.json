@@ -1,5 +1,8 @@
 {
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
-  ],
+  "outputDirectory": "Creators",
+  "functions": {
+    "api/scrape.js": {
+      "maxDuration": 60
+    }
+  }
 }
