@@ -7,7 +7,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
-  
+
 <style>
 
 body{
@@ -17,6 +17,7 @@ display:flex;
 justify-content:center;
 align-items:center;
 height:100vh;
+margin:0;
 }
 
 .card{
@@ -28,7 +29,7 @@ text-align:center;
 box-shadow:0 0 10px rgba(0,0,0,0.1);
 }
 
-input{
+input,select{
 width:100%;
 padding:10px;
 margin-top:10px;
@@ -55,54 +56,42 @@ cursor:pointer;
 <h2>Complete Your Profile</h2>
 
 <input id="name" placeholder="Full Name">
-<input id="instagram" placeholder="Instagram Profile Username">
+
+<input id="instagram" placeholder="Instagram Profile URL">
 
 <select id="category">
-
-<option value="">What do you mainly post about?</option>
-
-<option value="makeup">Makeup Artist / Beauty</option>
-<option value="fitness">Fitness / Gym</option>
-<option value="finance">Finance / Investing</option>
-<option value="education">Education / Exam Prep</option>
-<option value="business">Business / Entrepreneurship</option>
-<option value="tech">Tech / Programming</option>
-<option value="creator">Content Creator / Influencer</option>
-<option value="travel">Travel / Lifestyle</option>
-<option value="food">Food / Cooking</option>
-<option value="comedy">Comedy / Entertainment</option>
-<option value="local_business">Local Business</option>
-<option value="other">Other</option>
-
+<option value="">Select Content Category</option>
+<option>Education</option>
+<option>Finance</option>
+<option>Technology</option>
+<option>Business</option>
+<option>Career & Productivity</option>
+<option>Marketing</option>
+<option>Startup</option>
+<option>Health & Fitness</option>
+<option>Psychology</option>
+<option>Self Improvement</option>
+<option>Entertainment</option>
+<option>Travel</option>
+<option>Food</option>
+<option>Fashion</option>
+<option>Gaming</option>
 </select>
-  
+
 <button onclick="saveProfile()">Save Profile</button>
 
 </div>
 
 <script>
 
-const client = window.supabase.createClient(
-"https://vhdtlbpmstvnpcikrcwo.supabase.co",
-"sb_publishable_Rs5RaSAA2o3OXbWTL4-e2Q_V8kfzg0y",
-{
-auth: {
-persistSession: true,
-autoRefreshToken: true,
-storage: window.localStorage
-}
-}
-)
-
 checkUser()
 
 async function checkUser(){
 
-const { data, error } = await client.auth.getSession()
+const { data } = await client.auth.getSession()
 
-if(error || !data.session){
+if(!data.session){
 window.location="index.html"
-return
 }
 
 }
@@ -110,31 +99,20 @@ return
 async function saveProfile(){
 
 const { data } = await client.auth.getSession()
+const user=data.session.user
 
-if(!data.session){
-window.location="index.html"
-return
-}
-
-const user = data.session.user
-
-const name = document.getElementById("name").value.trim()
-const instagram = document.getElementById("instagram").value.trim()
-const category = document.getElementById("category").value
-  
-if(!name || !instagram){
-alert("Please fill all fields")
-return
-}
+const name=document.getElementById("name").value
+const instagram=document.getElementById("instagram").value
+const category=document.getElementById("category").value
 
 const { error } = await client
 .from("profiles")
-.update({
-name: name,
-instagram: instagram,
-category: category
+.insert({
+id:user.id,
+name:name,
+instagram:instagram,
+category:category
 })
-.eq("id", user.id)
 
 if(error){
 alert(error.message)
@@ -147,4 +125,5 @@ window.location="dashboard.html"
 </script>
 
 </body>
+
 </html>
