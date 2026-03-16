@@ -498,12 +498,13 @@ async function saveProfile(){
 
   setLoading(false)
 
-  if(error){
-    showMsg(error.message, 'error')
-  } else {
-    showMsg('✓ Profile saved! Taking you to your dashboard...', 'success')
-    setTimeout(() => window.location = 'dashboard.html', 1400)
-  }
+ if(error){
+   showMsg(error.message, 'error')
+ } else {
+   showMsg('✓ Profile saved! Setting up your dashboard...', 'success')
+   await fetch(`/api/scrape?user_id=${user.id}`)
+   window.location = 'dashboard.html'
+ }
 }
 
 checkAuth()
