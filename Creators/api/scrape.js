@@ -9,7 +9,7 @@ return res.status(400).json({ error: "username required" })
 const APIFY_TOKEN = "apify_api_gNQRi79dA204kpuWOQdzKDSexLbYZu005pM8"
 
 const APIFY_URL =
-`https://api.apify.com/v2/acts/apify/instagram-profile-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}`
+`https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}`
 
 try {
 
