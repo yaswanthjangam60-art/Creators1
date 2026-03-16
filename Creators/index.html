@@ -4,9 +4,10 @@
 <head>
 
 <title>Creator Intelligence</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
-  
+
 <style>
 
 body{
@@ -16,6 +17,7 @@ display:flex;
 justify-content:center;
 align-items:center;
 height:100vh;
+margin:0;
 }
 
 .card{
@@ -43,16 +45,14 @@ border:none;
 cursor:pointer;
 }
 
-hr{
-margin:25px 0;
-}
-
 a{
 display:block;
 margin-top:10px;
 font-size:14px;
-color:blue;
-cursor:pointer;
+}
+
+hr{
+margin:25px 0;
 }
 
 </style>
@@ -83,27 +83,38 @@ cursor:pointer;
 
 <button onclick="login()">Login</button>
 
-<a onclick="forgotPassword()">Forgot Password?</a>
+<a href="#" onclick="forgotPassword()">Forgot Password?</a>
 
 </div>
 
 <script>
 
+checkSession()
+
+async function checkSession(){
+
+const { data } = await client.auth.getSession()
+
+if(data.session){
+window.location="dashboard.html"
+}
+
+}
 
 async function signup(){
 
-const email = document.getElementById("signupEmail").value
-const password = document.getElementById("signupPassword").value
-const confirm = document.getElementById("signupConfirm").value
+const email=document.getElementById("signupEmail").value
+const password=document.getElementById("signupPassword").value
+const confirm=document.getElementById("signupConfirm").value
 
-if(password !== confirm){
+if(password!==confirm){
 alert("Passwords do not match")
 return
 }
 
 const { error } = await client.auth.signUp({
-email: email,
-password: password
+email:email,
+password:password
 })
 
 if(error){
@@ -116,12 +127,12 @@ window.location="profile.html"
 
 async function login(){
 
-const email = document.getElementById("loginEmail").value
-const password = document.getElementById("loginPassword").value
+const email=document.getElementById("loginEmail").value
+const password=document.getElementById("loginPassword").value
 
 const { error } = await client.auth.signInWithPassword({
-email: email,
-password: password
+email:email,
+password:password
 })
 
 if(error){
@@ -134,12 +145,12 @@ window.location="dashboard.html"
 
 async function forgotPassword(){
 
-const email = prompt("Enter your email to reset password")
+const email=prompt("Enter your email")
 
 if(!email) return
 
 const { error } = await client.auth.resetPasswordForEmail(email,{
-redirectTo:"https://creators1-gonh.vercel.app/reset.html"
+redirectTo:window.location.origin+"/reset.html"
 })
 
 if(error){
@@ -153,4 +164,5 @@ alert("Password reset email sent")
 </script>
 
 </body>
+
 </html>
