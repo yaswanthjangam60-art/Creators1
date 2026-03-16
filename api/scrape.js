@@ -1,3 +1,5 @@
+export const maxDuration = 60
+
 import { createClient } from "@supabase/supabase-js"
 
 export default async function handler(req, res) {
@@ -33,11 +35,11 @@ export default async function handler(req, res) {
     })
   }
 
-  // Call Apify
   try {
 
-    const apifyRes = await fetch(
-      `https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items?token=${process.env.APIFY_TOKEN}`,
+    // Step 1: Start Apify run (async)
+    const runRes = await fetch(
+      `https://api.apify.com/v2/acts/apify~instagram-profile-scraper/runs?token=${process.env.APIFY_TOKEN}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -48,20 +50,45 @@ export default async function handler(req, res) {
       }
     )
 
-    if (!apifyRes.ok) {
-      return res.status(502).json({ error: "Apify request failed", status: apifyRes.status })
+    if (!runRes.ok) {
+      const errText = await runRes.text()
+      return res.status(502).json({ error: "Apify run failed to start", detail: errText })
     }
 
-    const data = await apifyRes.json()
-    const igProfile = data[0]
+    const runData = await runRes.json()
+    const runId = runData.data?.id
+
+    if (!runId) {
+      return res.status(502).json({ error: "No run ID returned from Apify", detail: runData })
+    }
+
+    // Step 2: Poll for results every 5 seconds, up to 10 times (50 seconds)
+    let igProfile = null
+
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 5000))
+
+      const dataRes = await fetch(
+        `https://api.apify.com/v2/actor-runs/${runId}/dataset/items?token=${process.env.APIFY_TOKEN}`
+      )
+
+      if (!dataRes.ok) continue
+
+      const items = await dataRes.json()
+
+      if (items && items.length > 0) {
+        igProfile = items[0]
+        break
+      }
+    }
 
     if (!igProfile) {
-      return res.status(404).json({ error: "Instagram profile not found" })
+      return res.status(504).json({ error: "Apify timed out, no data returned. Please try again." })
     }
 
     const scrapedAt = now.toISOString()
 
-    // Insert into profile_snapshots
+    // Step 3: Insert into profile_snapshots
     const { error: snapshotError } = await supabase
       .from("profile_snapshots")
       .insert({
@@ -91,7 +118,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Failed to save profile snapshot", detail: snapshotError.message })
     }
 
-    // Insert posts into posts_data
+    // Step 4: Insert posts into posts_data
     let insertedPosts = 0
     const posts = igProfile.latestPosts || []
 
@@ -127,7 +154,7 @@ export default async function handler(req, res) {
       if (!postError) insertedPosts++
     }
 
-    // Upsert audit_log
+    // Step 5: Upsert audit_log
     await supabase
       .from("audit_log")
       .upsert({
@@ -137,7 +164,7 @@ export default async function handler(req, res) {
         last_posts_count:   igProfile.postsCount || 0
       }, { onConflict: "user_id" })
 
-    // Update last_scraped_at in profiles
+    // Step 6: Update last_scraped_at in profiles
     await supabase
       .from("profiles")
       .update({ last_scraped_at: scrapedAt })
