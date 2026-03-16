@@ -5,33 +5,40 @@
 
 <title>Creator Intelligence</title>
 
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase.js"></script>
 
 <style>
 
 body{
-font-family:Arial;
-background:#f5f5f5;
 margin:0;
+font-family:Arial, sans-serif;
+background:#f5f5f5;
 padding:20px;
 }
 
 .header{
-margin-bottom:30px;
+margin-bottom:20px;
+}
+
+#welcome{
+color:#555;
+margin-top:5px;
 }
 
 .tools{
 display:grid;
-grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-gap:20px;
+grid-template-columns:1fr;
+gap:15px;
 }
 
 .card{
 background:white;
 padding:20px;
 border-radius:10px;
-box-shadow:0 0 8px rgba(0,0,0,0.1);
+box-shadow:0 0 8px rgba(0,0,0,0.08);
 }
 
 .card h3{
@@ -46,10 +53,24 @@ background:black;
 color:white;
 cursor:pointer;
 width:100%;
+border-radius:6px;
 }
 
 .logout{
-margin-top:30px;
+margin-top:25px;
+background:#222;
+}
+
+@media(min-width:700px){
+.tools{
+grid-template-columns:repeat(2,1fr);
+}
+}
+
+@media(min-width:1100px){
+.tools{
+grid-template-columns:repeat(3,1fr);
+}
 }
 
 </style>
@@ -61,8 +82,7 @@ margin-top:30px;
 <div class="header">
 
 <h2>Creator Intelligence</h2>
-
-<h3 id="welcomeText">Loading...</h3>
+<div id="welcome">Loading...</div>
 
 </div>
 
@@ -70,32 +90,32 @@ margin-top:30px;
 
 <div class="card">
 <h3>Profile Audit</h3>
-<p>Analyze your latest posts, engagement patterns, posting timing and growth signals.</p>
-<button>Open</button>
+<p>Analyze your latest posts, engagement rate, posting patterns and growth signals.</p>
+<button onclick="openAudit()">Open</button>
 </div>
 
 <div class="card">
 <h3>Competitor Analysis</h3>
-<p>Compare your account with competitors and identify gaps in growth strategy.</p>
-<button>Open</button>
+<p>Compare your account with competitors and identify growth opportunities.</p>
+<button onclick="comingSoon()">Open</button>
 </div>
 
 <div class="card">
 <h3>Reel Validator</h3>
-<p>Check if a reel idea has viral potential based on similar high performing content.</p>
-<button>Open</button>
+<p>Check if your reel idea has viral potential using pattern analysis.</p>
+<button onclick="comingSoon()">Open</button>
 </div>
 
 <div class="card">
 <h3>Caption & Hashtag AI</h3>
-<p>Generate optimized captions and hashtags based on your niche and post style.</p>
-<button>Open</button>
+<p>Generate optimized captions and hashtags for better reach.</p>
+<button onclick="comingSoon()">Open</button>
 </div>
 
 <div class="card">
 <h3>Talk to Vikram</h3>
-<p>Your AI brand manager that helps plan content strategy and growth.</p>
-<button>Open</button>
+<p>Your AI brand manager helping plan content and growth strategy.</p>
+<button onclick="comingSoon()">Open</button>
 </div>
 
 </div>
@@ -117,24 +137,31 @@ return
 
 const user=data.session.user
 
-const { data:profile } = await client
+const { data:profile,error } = await client
 .from("profiles")
 .select("name")
 .eq("id",user.id)
 .single()
 
-if(profile){
-document.getElementById("welcomeText").innerText="Hi "+profile.name
+if(profile && profile.name){
+document.getElementById("welcome").innerText="Hi, "+profile.name
+}else{
+document.getElementById("welcome").innerText="Hi Creator"
 }
 
+}
+
+function openAudit(){
+alert("Profile Audit page will open next")
+}
+
+function comingSoon(){
+alert("Feature coming soon")
 }
 
 async function logout(){
-
 await client.auth.signOut()
-
 window.location="index.html"
-
 }
 
 </script>
