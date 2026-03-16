@@ -501,9 +501,8 @@ async function saveProfile(){
  if(error){
    showMsg(error.message, 'error')
  } else {
-   showMsg('✓ Profile saved! Setting up your dashboard...', 'success')
-   await fetch(`/api/scrape?user_id=${user.id}&username=${instagram}`)
-   window.location = 'dashboard.html'
+   showMsg('✓ Profile saved!', 'success')
+   setTimeout(() => window.location = 'dashboard.html', 1000)
  }
 }
 
