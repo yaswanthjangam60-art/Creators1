@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Creator Intelligence</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f5f5f5;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.card{
+background:white;
+padding:40px;
+width:360px;
+border-radius:10px;
+text-align:center;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+input{
+width:100%;
+padding:10px;
+margin-top:10px;
+}
+
+button{
+width:100%;
+padding:10px;
+margin-top:15px;
+background:black;
+color:white;
+border:none;
+cursor:pointer;
+}
+
+hr{
+margin:25px 0;
+}
+
+a{
+display:block;
+margin-top:10px;
+font-size:14px;
+color:blue;
+cursor:pointer;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>Create Account</h2>
+
+<input id="signupEmail" placeholder="Email">
+
+<input id="signupPassword" type="password" placeholder="Password">
+
+<input id="signupConfirm" type="password" placeholder="Confirm Password">
+
+<button onclick="signup()">Sign Up</button>
+
+<hr>
+
+<h3>Login</h3>
+
+<input id="loginEmail" placeholder="Email">
+
+<input id="loginPassword" type="password" placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<a onclick="forgotPassword()">Forgot Password?</a>
+
+</div>
+
+<script>
+
+const client = window.supabase.createClient(
+"https://vhdtlbpmstvnpcikrcwo.supabase.co",
+"sb_publishable_Rs5RaSAA2o3OXbWTL4-e2Q_V8kfzg0y"
+)
+
+async function signup(){
+
+const email = document.getElementById("signupEmail").value
+const password = document.getElementById("signupPassword").value
+const confirm = document.getElementById("signupConfirm").value
+
+if(password !== confirm){
+alert("Passwords do not match")
+return
+}
+
+const { error } = await client.auth.signUp({
+email: email,
+password: password
+})
+
+if(error){
+alert(error.message)
+}else{
+window.location="profile.html"
+}
+
+}
+
+async function login(){
+
+const email = document.getElementById("loginEmail").value
+const password = document.getElementById("loginPassword").value
+
+const { error } = await client.auth.signInWithPassword({
+email: email,
+password: password
+})
+
+if(error){
+alert(error.message)
+}else{
+window.location="dashboard.html"
+}
+
+}
+
+async function forgotPassword(){
+
+const email = prompt("Enter your email to reset password")
+
+if(!email) return
+
+const { error } = await client.auth.resetPasswordForEmail(email,{
+redirectTo:"http://127.0.0.1:5500/reset.html"
+})
+
+if(error){
+alert(error.message)
+}else{
+alert("Password reset email sent")
+}
+
+}
+
+</script>
+
+</body>
+</html>

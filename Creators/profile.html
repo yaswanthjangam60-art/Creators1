@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Profile Setup</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f5f5f5;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+}
+
+.card{
+background:white;
+padding:40px;
+width:360px;
+border-radius:10px;
+text-align:center;
+box-shadow:0 0 10px rgba(0,0,0,0.1);
+}
+
+input{
+width:100%;
+padding:10px;
+margin-top:10px;
+}
+
+button{
+width:100%;
+padding:10px;
+margin-top:15px;
+background:black;
+color:white;
+border:none;
+cursor:pointer;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+<h2>Complete Your Profile</h2>
+
+<input id="name" placeholder="Full Name">
+<input id="instagram" placeholder="Instagram Profile URL">
+
+<button onclick="saveProfile()">Save Profile</button>
+
+</div>
+
+<script>
+
+const client = window.supabase.createClient(
+"https://vhdtlbpmstvnpcikrcwo.supabase.co",
+"sb_publishable_Rs5RaSAA2o3OXbWTL4-e2Q_V8kfzg0y"
+)
+
+checkUser()
+
+async function checkUser(){
+
+const { data, error } = await client.auth.getSession()
+
+if(error || !data.session){
+window.location="index.html"
+return
+}
+
+}
+
+async function saveProfile(){
+
+const { data } = await client.auth.getSession()
+
+if(!data.session){
+window.location="index.html"
+return
+}
+
+const user = data.session.user
+
+const name = document.getElementById("name").value.trim()
+const instagram = document.getElementById("instagram").value.trim()
+
+if(!name || !instagram){
+alert("Please fill all fields")
+return
+}
+
+const { error } = await client
+.from("profiles")
+.update({
+name: name,
+instagram: instagram
+})
+.eq("id", user.id)
+
+if(error){
+alert(error.message)
+}else{
+window.location="dashboard.html"
+}
+
+}
+
+</script>
+
+</body>
+</html>
