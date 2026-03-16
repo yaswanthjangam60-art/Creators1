@@ -2,120 +2,171 @@ import { createClient } from "@supabase/supabase-js"
 
 export default async function handler(req, res) {
 
-const username = req.query.username
-const user_id = req.query.user_id
+  const { user_id } = req.query
 
-if(!username || !user_id){
-return res.status(400).json({error:"username or user_id missing"})
-}
+  if (!user_id) {
+    return res.status(400).json({ error: "user_id is required" })
+  }
 
-const supabase = createClient(
-process.env.SUPABASE_URL,
-process.env.SUPABASE_SERVICE_ROLE_KEY
-)
+  const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
+  )
 
-const APIFY_TOKEN = process.env.APIFY_TOKEN
+  // Step 1: Get profile (instagram handle + last_scraped_at)
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("instagram, last_scraped_at")
+    .eq("id", user_id)
+    .single()
 
-try{
+  if (profileError || !profile) {
+    return res.status(404).json({ error: "Profile not found" })
+  }
 
-const run = await fetch(
-`https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items?token=${APIFY_TOKEN}`,
-{
-method:"POST",
-headers:{ "Content-Type":"application/json" },
-body:JSON.stringify({
-usernames:[username],
-resultsLimit:20
-})
-}
-)
+  if (!profile.instagram) {
+    return res.status(400).json({ error: "No Instagram username on profile" })
+  }
 
-const data = await run.json()
+  const username = profile.instagram
+  const lastScraped = profile.last_scraped_at ? new Date(profile.last_scraped_at) : null
+  const now = new Date()
+  const hoursSinceLastScrape = lastScraped ? (now - lastScraped) / (1000 * 60 * 60) : null
 
-const profile = data[0]
+  // Step 2: Check if scrape is needed
+  // null = never scraped → scrape
+  // < 24hrs → skip, return existing data
+  // >= 24hrs → scrape again
+  if (lastScraped && hoursSinceLastScrape < 24) {
+    return res.json({
+      success: true,
+      scraped: false,
+      message: "Using existing data",
+      last_scraped_at: lastScraped
+    })
+  }
 
-if(!profile){
-return res.status(404).json({error:"profile not found"})
-}
+  // Step 3: Call Apify
+  try {
 
-await supabase.from("profile_snapshots").insert({
+    const apifyRes = await fetch(
+      `https://api.apify.com/v2/acts/apify~instagram-profile-scraper/run-sync-get-dataset-items?token=${process.env.APIFY_TOKEN}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          usernames: [username],
+          resultsLimit: 20
+        })
+      }
+    )
 
-user_id:user_id,
-instagram_username:profile.username,
-instagram_user_id:profile.id,
-full_name:profile.fullName,
-biography:profile.biography,
-external_url:profile.externalUrl,
-external_urls:profile.externalUrls,
-followers_count:profile.followersCount,
-following_count:profile.followsCount,
-posts_count:profile.postsCount,
-highlight_reel_count:profile.highlightReelCount,
-igtv_video_count:profile.igtvVideoCount,
-is_business_account:profile.isBusinessAccount,
-business_category_name:profile.businessCategoryName,
-is_private:profile.private,
-is_verified:profile.verified,
-profile_pic_url:profile.profilePicUrl,
-profile_pic_url_hd:profile.profilePicUrlHD
+    if (!apifyRes.ok) {
+      return res.status(502).json({ error: "Apify request failed", status: apifyRes.status })
+    }
 
-})
+    const data = await apifyRes.json()
+    const igProfile = data[0]
 
-let insertedPosts = 0
+    if (!igProfile) {
+      return res.status(404).json({ error: "Instagram profile not found" })
+    }
 
-for(const post of profile.latestPosts){
+    const scrapedAt = now.toISOString()
 
-const { error } = await supabase
-.from("posts_data")
-.insert({
+    // Step 4: Insert into profile_snapshots
+    const { error: snapshotError } = await supabase
+      .from("profile_snapshots")
+      .insert({
+        user_id:               user_id,
+        instagram_username:    igProfile.username,
+        instagram_user_id:     igProfile.id,
+        full_name:             igProfile.fullName          || null,
+        biography:             igProfile.biography         || null,
+        external_url:          igProfile.externalUrl       || null,
+        external_urls:         igProfile.externalUrls      || null,
+        followers_count:       igProfile.followersCount    || 0,
+        following_count:       igProfile.followsCount      || 0,
+        posts_count:           igProfile.postsCount        || 0,
+        highlight_reel_count:  igProfile.highlightReelCount || 0,
+        igtv_video_count:      igProfile.igtvVideoCount    || 0,
+        is_business_account:   igProfile.isBusinessAccount ?? false,
+        business_category_name: igProfile.businessCategoryName || null,
+        is_private:            igProfile.private           ?? false,
+        is_verified:           igProfile.verified          ?? false,
+        profile_pic_url:       igProfile.profilePicUrl     || null,
+        profile_pic_url_hd:    igProfile.profilePicUrlHD   || null,
+        scraped_at:            scrapedAt
+      })
 
-user_id:user_id,
-instagram_username:profile.username,
-instagram_user_id:profile.id,
-post_id:post.id,
-shortcode:post.shortCode,
-post_url:post.url,
-type:post.type,
-caption:post.caption,
-hashtags:post.hashtags,
-mentions:post.mentions,
-likes_count:post.likesCount,
-comments_count:post.commentsCount,
-video_view_count:post.videoViewCount,
-location_name:post.locationName,
-location_id:post.locationId,
-dimensions_height:post.dimensionsHeight,
-dimensions_width:post.dimensionsWidth,
-display_url:post.displayUrl,
-video_url:post.videoUrl,
-is_pinned:post.isPinned,
-comments_disabled:post.isCommentsDisabled,
-post_timestamp:post.timestamp
+    if (snapshotError) {
+      console.error("profile_snapshots insert error:", snapshotError)
+      return res.status(500).json({ error: "Failed to save profile snapshot", detail: snapshotError.message })
+    }
 
-})
+    // Step 5: Insert posts into posts_data (skip duplicates via post_id UNIQUE)
+    let insertedPosts = 0
+    const posts = igProfile.latestPosts || []
 
-if(!error) insertedPosts++
+    for (const post of posts) {
+      const { error: postError } = await supabase
+        .from("posts_data")
+        .insert({
+          user_id:            user_id,
+          instagram_username: igProfile.username,
+          instagram_user_id:  igProfile.id,
+          post_id:            post.id,
+          shortcode:          post.shortCode          || null,
+          post_url:           post.url                || null,
+          type:               post.type               || null,
+          caption:            post.caption            || null,
+          hashtags:           post.hashtags           || [],
+          mentions:           post.mentions           || [],
+          likes_count:        post.likesCount         || 0,
+          comments_count:     post.commentsCount      || 0,
+          video_view_count:   post.videoViewCount     || null,
+          location_name:      post.locationName       || null,
+          location_id:        post.locationId         || null,
+          dimensions_height:  post.dimensionsHeight   || null,
+          dimensions_width:   post.dimensionsWidth    || null,
+          display_url:        post.displayUrl         || null,
+          video_url:          post.videoUrl           || null,
+          is_pinned:          post.isPinned           ?? false,
+          comments_disabled:  post.isCommentsDisabled ?? false,
+          post_timestamp:     post.timestamp          || null,
+          scraped_at:         scrapedAt
+        })
 
-}
+      // Silently skip duplicate posts (post_id is UNIQUE)
+      if (!postError) insertedPosts++
+    }
 
-await supabase.from("audit_log").upsert({
+    // Step 6: Upsert audit_log
+    await supabase
+      .from("audit_log")
+      .upsert({
+        user_id:            user_id,
+        instagram_username: igProfile.username,
+        last_scraped_at:    scrapedAt,
+        last_posts_count:   igProfile.postsCount || 0
+      }, { onConflict: "user_id" })
 
-user_id:user_id,
-instagram_username:profile.username,
-last_scraped_at:new Date(),
-last_posts_count:profile.postsCount
+    // Step 7: Update last_scraped_at in profiles
+    await supabase
+      .from("profiles")
+      .update({ last_scraped_at: scrapedAt })
+      .eq("id", user_id)
 
-})
+    return res.json({
+      success: true,
+      scraped: true,
+      posts_saved: insertedPosts,
+      last_scraped_at: scrapedAt
+    })
 
-res.json({
-success:true,
-posts_saved:insertedPosts
-})
-
-}catch(err){
-
-res.status(500).json({error:err.message})
-
-}
+  } catch (err) {
+    console.error("Scrape error:", err)
+    return res.status(500).json({ error: err.message })
+  }
 
 }
